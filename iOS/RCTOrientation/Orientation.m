@@ -50,6 +50,30 @@ static UIInterfaceOrientationMask _orientation = UIInterfaceOrientationMaskAllBu
 
 }
 
+- (UIInterfaceOrientation)getFallbackOrientation {
+  // On iOS 13+ we use the interfaceOrientation for the key window due to occasional crashes with the
+  // deprecated statusBarOrientation.
+  if (@available(iOS 13, *)) {
+      NSArray *windows = [[UIApplication sharedApplication] windows];
+      NSUInteger keyWindowIdx = [windows indexOfObjectPassingTest:^(id obj, NSUInteger idx, BOOL *stop){
+        UIWindow *win = (UIWindow *)obj;
+        return win.isKeyWindow;
+      }];
+      
+      if (keyWindowIdx != NSNotFound) {
+        UIWindow *keyWindow = (UIWindow *) [windows objectAtIndex:keyWindowIdx];
+        if (keyWindow.windowScene) {
+            return keyWindow.windowScene.interfaceOrientation;
+        }
+      }
+      
+      return UIInterfaceOrientationUnknown;
+  }
+  
+  // For iOS < 13 use statusBarOrientation
+  return [[UIApplication sharedApplication] statusBarOrientation];
+}
+
 - (NSString *)getOrientationStr: (UIDeviceOrientation)orientation {
   NSString *orientationStr;
   switch (orientation) {
@@ -67,8 +91,8 @@ static UIInterfaceOrientationMask _orientation = UIInterfaceOrientationMaskAllBu
       break;
 
     default:
-      // orientation is unknown, we try to get the status bar orientation
-      switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+      // orientation is unknown, we try to get a fallback orientation
+      switch ([self getFallbackOrientation]) {
         case UIInterfaceOrientationPortrait:
           orientationStr = @"PORTRAIT";
           break;
@@ -111,8 +135,8 @@ static UIInterfaceOrientationMask _orientation = UIInterfaceOrientationMaskAllBu
       break;
 
     default:
-      // orientation is unknown, we try to get the status bar orientation
-      switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+      // orientation is unknown, we try to get a fallback orientation
+      switch ([self getFallbackOrientation]) {
         case UIInterfaceOrientationPortrait:
           orientationStr = @"PORTRAIT";
           break;
